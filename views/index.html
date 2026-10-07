@@ -166,6 +166,9 @@ input{font-size:16px}
 .cabeca .r{text-align:right;padding-right:9px}
 .cabeca .l{padding-left:9px}
 .linha{padding:3px 0;border-top:1px solid var(--line)}
+.nomew{display:grid;min-width:0}
+.nomew::after{content:attr(data-v) ' ';visibility:hidden;pointer-events:none;grid-area:1/1;display:block;min-width:0;padding:11px 8px;border:1px solid transparent;min-height:44px;font:inherit;font-weight:600;line-height:1.3;white-space:pre-wrap;overflow-wrap:anywhere}
+.nomew>.nome{grid-area:1/1;height:100%;min-height:44px}
 .nome{display:block;width:100%;min-width:0;background:transparent;border:1px solid transparent;border-radius:10px;padding:11px 8px;min-height:44px;font:inherit;font-weight:600;line-height:1.3;color:var(--ink);resize:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere;-webkit-appearance:none;appearance:none}
 .nome:hover{background:var(--bg2)}
 .valor{width:100%;min-width:0;text-align:right;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:9px 8px;min-height:44px;font-family:var(--f-mono);font-weight:500;font-size:15px;font-variant-numeric:tabular-nums;color:var(--ink)}
@@ -716,11 +719,11 @@ body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(saf
   function renderAvisos() {
     var box = $('#avisos'); if (!box) return;
     if (state.status !== 'ok') { box.innerHTML = ''; return; }
-    var out = [], prox = addMes(state.mes, 1);
+    var out = [], prox = addMes(state.mes, 1), vivo = state.vivo || {};
     var ORD = ['', 'PRIMEIRA', 'SEGUNDA', 'TERCEIRA', 'QUARTA', 'QUINTA', 'SEXTA', 'SÉTIMA', 'OITAVA', 'NONA', 'DÉCIMA'];
     doMes(state.mes).forEach(function (l) {
       var f = fimParcela(l.nome); if (!f) return;
-      var falta = difMes(state.mes, f.fim), n = difMes(f.ini, state.mes) + 1, total = difMes(f.ini, f.fim) + 1, v = l.valorCentavos || 0;
+      var falta = difMes(state.mes, f.fim), n = difMes(f.ini, state.mes) + 1, total = difMes(f.ini, f.fim) + 1, v = (l.id in vivo) ? vivo[l.id] : (l.valorCentavos || 0);
       var gasto = v > 0 ? ' (' + brl(v) + ')' : '';
       if (falta < 0) { out.push('<div class="parc fim" role="status">' + SINO + '<div class="pt"><b>PARCELA ENCERRADA</b>' + esc(f.rotulo) + ' terminou em ' + esc(mesTitulo(f.fim)) + '. Você pode excluir esta linha.</div></div>'); return; }
       if (n < 1) return;                                   /* ainda não começou */
@@ -776,7 +779,7 @@ body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(saf
     var v = l.valorCentavos || 0, itens = Array.isArray(l.itens) ? l.itens : [], tem = itens.length > 0;
     return '<li class="linha ' + (fixo ? 'f' : 'v') + '" data-row="' + esc(l.id) + '">' +
       ('<button type="button" class="pg" data-action="pago" data-id="' + esc(l.id) + '" aria-pressed="' + pago + '" aria-label="' + esc((l.nome || 'Linha') + (pago ? ': pago. Toque para marcar como a pagar.' : ': a pagar. Toque para marcar como pago.')) + '"' + (state.canWrite ? '' : ' disabled') + '>' + pgSvg(l.id) + '</button>') +
-      '<textarea class="nome" rows="1" data-field="nome" data-id="' + esc(l.id) + '" maxlength="120" aria-label="Nome da linha" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" spellcheck="false"' + ro + '>' + esc(l.nome || '') + '</textarea>' +
+      '<div class="nomew" data-v="' + esc(l.nome || '') + '"><textarea class="nome" rows="1" data-field="nome" data-id="' + esc(l.id) + '" maxlength="120" aria-label="Nome da linha" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" spellcheck="false"' + ro + '>' + esc(l.nome || '') + '</textarea></div>' +
       (tem ? '<button type="button" class="valor tot" data-action="lanc" data-id="' + esc(l.id) + '" aria-label="Total de ' + esc(l.nome || 'linha') + ': ' + esc(brl(v)) + '. Toque para ver os gastos.">' + num(v) + '</button>'
         : '<input class="valor' + (v === 0 ? ' zero' : '') + '" data-field="valor" data-id="' + esc(l.id) + '" inputmode="decimal" placeholder="0,00" value="' + num(v) + '" aria-label="Valor gasto em ' + esc(l.nome || 'linha') + ', em reais" autocomplete="off"' + ro + '>') +
       (state.canWrite ? '<button type="button" class="del' + (arm ? ' arm' : '') + '" data-action="del" data-id="' + esc(l.id) + '" aria-label="Excluir ' + esc(l.nome || 'linha') + '">' + (arm ? 'Excluir?' : '×') + '</button>' : '') +
@@ -816,9 +819,18 @@ body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(saf
       '</div>' };
   }
 
-  function ajustar(el) { el.style.height = 'auto'; el.style.height = (el.scrollHeight + 2) + 'px'; }
+  function ajustar(el) { if (el.parentNode && el.parentNode.classList.contains('nomew')) el.parentNode.setAttribute('data-v', el.value); }
   function ajustarTodos() { var l = document.querySelectorAll('textarea.nome'); for (var i = 0; i < l.length; i++) ajustar(l[i]); }
-  document.addEventListener('input', function (ev) { if (ev.target && ev.target.matches && ev.target.matches('textarea.nome')) ajustar(ev.target); });
+  document.addEventListener('input', function (ev) {
+    var t = ev.target; if (!t || !t.matches) return;
+    if (t.matches('textarea.nome')) ajustar(t);
+    else if (t.matches('input[data-field="valor"]')) {      /* o aviso das parcelas acompanha o valor enquanto se digita */
+      state.vivo = state.vivo || {}; var n = parseValor(t.value), id = t.getAttribute('data-id');
+      if (t.value.trim() === '') n = 0;
+      if (isNaN(n)) delete state.vivo[id]; else state.vivo[id] = n;
+      renderAvisos();
+    }
+  });
   window.addEventListener('resize', ajustarTodos);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(ajustarTodos);
   function renderGrupos() {
@@ -1286,7 +1298,7 @@ body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(saf
     }
     state.canWrite = canWrite;
     S.iniciar({
-      linhas: function (arr) { state.linhas = arr; state.status = 'ok'; render(); },
+      linhas: function (arr) { state.linhas = arr; state.vivo = {}; state.status = 'ok'; render(); },
       renda: function (v) { state.renda = v; if (state.status === 'ok' && MODO === 'artefato') render(); },
       erro: function () { state.status = 'erro'; render(); },
       offline: function (b) { $('#offline').hidden = !b; }
