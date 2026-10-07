@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#080C09">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Gastos">
+<meta name="robots" content="noindex,nofollow">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<title>Gastos da Casa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Manrope:wght@400;600;700&display=swap">
+<style>
+:root{color-scheme:dark;--bg:#080C09;--surface:#111812;--line:#233027;--ink:#EEF5EA;--muted:#8FA597;--lime:#C6FF1A;--lime-ink:#0A1300;--coral:#FF5C6A}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background-color:var(--bg);background-image:radial-gradient(800px 460px at 10% -8%,rgba(198,255,26,.12),transparent 62%),radial-gradient(640px 380px at 100% 0,rgba(255,61,154,.08),transparent 60%);background-repeat:no-repeat;color:var(--ink);font-family:'Manrope',system-ui,sans-serif;font-size:16px;display:grid;place-items:center;padding:24px 16px calc(24px + env(safe-area-inset-bottom,0px))}
+.box{width:100%;max-width:380px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:28px 22px;display:flex;flex-direction:column;gap:18px;box-shadow:0 0 60px rgba(198,255,26,.08)}
+h1{margin:0;font-family:'Unbounded',system-ui,sans-serif;font-weight:700;font-size:26px;line-height:1.1;letter-spacing:-.01em}
+h1::after{content:'';display:block;width:44px;height:4px;border-radius:2px;background:var(--lime);margin-top:12px;box-shadow:0 0 22px rgba(198,255,26,.5)}
+p{margin:0;color:var(--muted);font-size:14px}
+label{font-size:13px;font-weight:700;color:var(--muted)}
+input{-webkit-text-security:disc;width:100%;margin-top:6px;min-height:50px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:#0D130F;color:var(--ink);font:inherit;font-size:16px}
+input:focus{outline:none;border-color:var(--lime);box-shadow:0 0 0 3px rgba(198,255,26,.18)}
+button{min-height:50px;border:0;border-radius:12px;background:var(--lime);color:var(--lime-ink);font:inherit;font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 0 26px rgba(198,255,26,.3)}
+.erro{color:var(--coral);font-size:14px;min-height:20px}
+.casal{display:block;width:100%;max-width:300px;aspect-ratio:1;object-fit:cover;margin:0 auto;border-radius:26px;border:1px solid rgba(198,255,26,.38);box-shadow:0 0 36px rgba(198,255,26,.14)}
+</style>
+</head>
+<body>
+<form class="box" method="post" action="/login">
+  <img class="casal" src="/casal.jpg" width="900" height="900" alt="Guilherme e Ana">
+  <div>
+    <h1>Gastos da Casa</h1>
+  </div>
+  <p>Digite a senha para abrir.</p>
+  <div>
+    <label for="senha">Senha</label>
+    <input id="senha" name="gc-chave" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore required autofocus>
+  </div>
+  <p class="erro" role="alert">__ERRO__</p>
+  <button type="submit">Entrar</button>
+</form>
+<script>
+/* a senha não fica salva: a cada abertura do app ela é pedida de novo */
+document.querySelector("form").addEventListener("submit",function(){try{sessionStorage.setItem("gc_vivo","1")}catch(e){}});
+try{sessionStorage.removeItem("gc_vivo")}catch(e){}
+</script>
+</body>
+</html>
