@@ -33,8 +33,25 @@ async function criarArmazenamento() {
     await pool.query(
       'CREATE TABLE IF NOT EXISTS estado (id INT PRIMARY KEY, dados JSONB NOT NULL, atualizado TIMESTAMPTZ NOT NULL DEFAULT now())'
     );
+    await pool.query(
+      'CREATE TABLE IF NOT EXISTS anexos (id TEXT PRIMARY KEY, dados BYTEA NOT NULL, criado TIMESTAMPTZ NOT NULL DEFAULT now())'
+    );
     return {
       tipo: 'postgres',
+      // Arquivos anexados (prints, PDFs, planilhas, vídeos...): ficam no banco, fora do documento principal.
+      async guardarArquivo(id, buf) {
+        await pool.query(
+          'INSERT INTO anexos (id, dados) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET dados = EXCLUDED.dados',
+          [id, buf]
+        );
+      },
+      async lerArquivo(id, ini, qtd) {
+        const r = await pool.query('SELECT substring(dados from $2::int for $3::int) AS d FROM anexos WHERE id = $1', [id, ini + 1, qtd]);
+        return r.rows.length ? r.rows[0].d : null;
+      },
+      async apagarArquivo(id) {
+        await pool.query('DELETE FROM anexos WHERE id = $1', [id]);
+      },
       async carregar() {
         const r = await pool.query('SELECT dados FROM estado WHERE id = 1');
         return r.rows.length ? normaliza(r.rows[0].dados) : estadoVazio();
@@ -51,8 +68,26 @@ async function criarArmazenamento() {
   const dir = process.env.DATA_DIR || path.join(__dirname, 'data');
   const arquivo = path.join(dir, 'estado.json');
   fs.mkdirSync(dir, { recursive: true });
+  const pastaAnexos = path.join(dir, 'anexos');
+  fs.mkdirSync(pastaAnexos, { recursive: true });
+  const caminhoAnexo = (id) => path.join(pastaAnexos, String(id).replace(/[^A-Za-z0-9_-]/g, '_'));
   return {
     tipo: 'arquivo (' + arquivo + ')',
+    async guardarArquivo(id, buf) {
+      fs.writeFileSync(caminhoAnexo(id), buf);
+    },
+    async lerArquivo(id, ini, qtd) {
+      let fd;
+      try { fd = fs.openSync(caminhoAnexo(id), 'r'); } catch (e) { return null; }
+      try {
+        const b = Buffer.alloc(qtd);
+        const n = fs.readSync(fd, b, 0, qtd, ini);
+        return b.subarray(0, n);
+      } finally { fs.closeSync(fd); }
+    },
+    async apagarArquivo(id) {
+      try { fs.unlinkSync(caminhoAnexo(id)); } catch (e) {}
+    },
     async carregar() {
       try {
         return normaliza(JSON.parse(fs.readFileSync(arquivo, 'utf8')));

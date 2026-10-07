@@ -82,6 +82,23 @@ const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const MES_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 const MAX_LINHAS = 20000;
 const MAX_VALOR = 100000000000;
+const MAX_ANEXO = 40 * 1024 * 1024;   // 40 MB por arquivo
+const MAX_ANEXOS_LINHA = 30;
+
+/* anexos: nome e tipo seguros; só imagem, PDF, vídeo, áudio e texto simples abrem direto no navegador, o resto baixa */
+const EXT_TIPO = { pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', heic: 'image/heic', heif: 'image/heif', mp4: 'video/mp4', m4v: 'video/x-m4v', mov: 'video/quicktime', webm: 'video/webm', mp3: 'audio/mpeg', m4a: 'audio/mp4', txt: 'text/plain' };
+const ABRE_DIRETO = /^(image\/(png|jpe?g|gif|webp|avif|bmp|heic|heif)|application\/pdf|video\/(mp4|quicktime|webm|x-m4v)|audio\/[a-z0-9.+-]+|text\/plain)$/;
+function nomeSeguro(n) {
+  let x = String(n || '').split(/[\\/]/).pop().replace(/[\u0000-\u001f\u007f]/g, '').trim();
+  if (x.length > 120) { const m = /(\.[A-Za-z0-9]{1,8})$/.exec(x); x = x.slice(0, 120 - (m ? m[1].length : 0)) + (m ? m[1] : ''); }
+  return x || 'arquivo';
+}
+function tipoSeguro(t, nome) {
+  let x = String(t || '').split(';')[0].trim().toLowerCase();
+  const ext = (/\.([A-Za-z0-9]{1,8})$/.exec(nome) || [])[1];
+  if ((!x || x === 'application/octet-stream') && ext && EXT_TIPO[ext.toLowerCase()]) x = EXT_TIPO[ext.toLowerCase()];
+  return /^[a-z0-9.+-]+\/[a-z0-9.+-]+$/.test(x) && x.length <= 100 ? x : 'application/octet-stream';
+}
 
 function limparLinha(b, parcial) {
   if (!b || typeof b !== 'object' || Array.isArray(b)) throw new Error('Corpo inválido.');
@@ -243,6 +260,8 @@ async function iniciar() {
     let doc;
     try { doc = limparLinha(req.body, false); } catch (e) { return res.status(400).json({ erro: e.message }); }
     if (!(req.params.id in estado.linhas) && Object.keys(estado.linhas).length >= MAX_LINHAS) return res.status(400).json({ erro: 'Limite de linhas atingido.' });
+    const antes = estado.linhas[req.params.id];
+    if (antes && Array.isArray(antes.anexos) && antes.anexos.length) doc.anexos = antes.anexos;   // anexos só mudam pelas rotas de anexo
     estado.linhas[req.params.id] = doc;
     await persistir();
     res.json({ rev: estado.rev });
@@ -260,8 +279,10 @@ async function iniciar() {
 
   api.delete('/linhas/:id', async (req, res) => {
     if (!ID_RE.test(req.params.id)) return res.status(400).json({ erro: 'Id inválido.' });
+    const velha = estado.linhas[req.params.id];
     delete estado.linhas[req.params.id];
     await persistir();
+    if (velha && Array.isArray(velha.anexos)) velha.anexos.forEach((a) => armazenamento.apagarArquivo(a.id).catch(() => {}));
     res.json({ rev: estado.rev });
   });
 
@@ -281,11 +302,75 @@ async function iniciar() {
     res.json({ rev: estado.rev });
   });
 
+  /* ---------- anexos: prints, PDFs, planilhas, vídeos... de cada pagamento ---------- */
+  app.post('/api/linhas/:id/anexos', express.raw({ type: () => true, limit: MAX_ANEXO + 1024 }), async (req, res) => {
+    const linha = estado.linhas[req.params.id];
+    if (!ID_RE.test(req.params.id) || !linha) return res.status(404).json({ erro: 'Linha não encontrada.' });
+    const corpo = req.body;
+    if (!Buffer.isBuffer(corpo) || corpo.length === 0) return res.status(400).json({ erro: 'Arquivo vazio.' });
+    if (corpo.length > MAX_ANEXO) return res.status(413).json({ erro: 'Arquivo grande demais (limite de 40 MB).' });
+    if ((linha.anexos || []).length >= MAX_ANEXOS_LINHA) return res.status(400).json({ erro: 'Limite de ' + MAX_ANEXOS_LINHA + ' arquivos por pagamento.' });
+    let nome = 'arquivo';
+    try { nome = nomeSeguro(decodeURIComponent(String(req.headers['x-nome'] || ''))); } catch (e) { nome = nomeSeguro(req.headers['x-nome']); }
+    const anexo = { id: 'a' + crypto.randomBytes(9).toString('base64url'), nome, tipo: tipoSeguro(req.headers['content-type'], nome), tamanho: corpo.length, criado: Date.now() };
+    await armazenamento.guardarArquivo(anexo.id, corpo);
+    const atual = estado.linhas[req.params.id];
+    if (!atual) { armazenamento.apagarArquivo(anexo.id).catch(() => {}); return res.status(404).json({ erro: 'A linha foi excluída.' }); }
+    atual.anexos = (Array.isArray(atual.anexos) ? atual.anexos : []).concat([anexo]);
+    await persistir();
+    res.json({ anexo, rev: estado.rev });
+  });
+
+  app.delete('/api/linhas/:id/anexos/:aid', async (req, res) => {
+    const linha = estado.linhas[req.params.id];
+    if (!ID_RE.test(req.params.id) || !ID_RE.test(req.params.aid) || !linha) return res.status(404).json({ erro: 'Não encontrado.' });
+    const lista = Array.isArray(linha.anexos) ? linha.anexos : [];
+    if (!lista.some((a) => a.id === req.params.aid)) return res.status(404).json({ erro: 'Anexo não encontrado.' });
+    linha.anexos = lista.filter((a) => a.id !== req.params.aid);
+    if (!linha.anexos.length) delete linha.anexos;
+    await persistir();
+    armazenamento.apagarArquivo(req.params.aid).catch(() => {});
+    res.json({ rev: estado.rev });
+  });
+
+  app.get('/api/anexos/:aid', async (req, res) => {
+    if (!ID_RE.test(req.params.aid)) return res.status(404).end();
+    let meta = null;
+    for (const id of Object.keys(estado.linhas)) {
+      const a = (estado.linhas[id].anexos || []).find((x) => x.id === req.params.aid);
+      if (a) { meta = a; break; }
+    }
+    if (!meta) return res.status(404).type('text').send('Não encontrado.');
+    const tam = meta.tamanho;
+    let ini = 0, fim = tam - 1, status = 200;
+    const m = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
+    if (m && (m[1] || m[2])) {
+      if (m[1] === '') { ini = Math.max(0, tam - Number(m[2])); }
+      else { ini = Number(m[1]); if (m[2] !== '') fim = Math.min(fim, Number(m[2])); }
+      if (ini > fim || ini >= tam) { res.setHeader('Content-Range', 'bytes */' + tam); return res.status(416).end(); }
+      status = 206;
+    }
+    const dados = await armazenamento.lerArquivo(meta.id, ini, fim - ini + 1);
+    if (!dados) return res.status(404).type('text').send('Arquivo não encontrado.');
+    const direto = ABRE_DIRETO.test(meta.tipo) && req.query.baixar !== '1';
+    res.status(status);
+    if (status === 206) res.setHeader('Content-Range', 'bytes ' + ini + '-' + fim + '/' + tam);
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Content-Type', direto ? (meta.tipo === 'text/plain' ? 'text/plain; charset=utf-8' : meta.tipo) : 'application/octet-stream');
+    res.setHeader('Content-Length', dados.length);
+    res.setHeader('Content-Disposition', (direto ? 'inline' : 'attachment') + "; filename=\"" + meta.nome.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_') + "\"; filename*=UTF-8''" + encodeURIComponent(meta.nome));
+    res.setHeader('Cache-Control', 'private, max-age=86400');
+    if (direto && !/^text\//.test(meta.tipo)) res.removeHeader('Content-Security-Policy');   // o leitor de PDF/vídeo do navegador precisa disso
+    else res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+    res.send(dados);
+  });
+
   app.use('/api', api);
 
   app.use((req, res) => res.status(404).type('text').send('Não encontrado.'));
   app.use((err, req, res, next) => {
     if (err && err.type === 'entity.parse.failed') return res.status(400).json({ erro: 'JSON inválido.' });
+    if (err && err.type === 'entity.too.large') return res.status(413).json({ erro: 'Arquivo grande demais (limite de 40 MB).' });
     console.error(err);
     res.status(500).json({ erro: 'Erro interno.' });
   });

@@ -211,6 +211,33 @@ input{font-size:16px}
 .ladd:hover{background:var(--pink-soft)}
 .valor.tot{display:block;text-align:right;cursor:pointer;border-color:rgba(255,61,154,.4);color:var(--pink);font-weight:700}
 
+/* anexos: prints, PDF, planilhas, vídeos... de cada pagamento */
+.apill{display:inline-flex;align-items:center;gap:6px;min-height:32px;margin:0;padding:0 12px;border-radius:999px;border:1px dashed rgba(238,245,234,.34);background:transparent;color:var(--muted);font-size:12.5px;font-weight:800;letter-spacing:.01em}
+.apill svg{flex:none;display:block}
+.apill:hover{background:rgba(238,245,234,.07);color:var(--ink)}
+.apill.tem{border-style:solid;background:rgba(238,245,234,.08);color:var(--ink)}
+.apill .sg{display:inline-block;transition:transform .2s}
+.apill[aria-expanded=true] .sg{transform:rotate(90deg)}
+.apanel{margin:4px 0 8px 8px;padding:10px;border:1px solid var(--line);border-radius:14px;background:var(--bg2)}
+.aitem{display:grid;grid-template-columns:52px minmax(0,1fr) auto auto;gap:4px 10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.aitem:first-child{border-top:0;padding-top:0}
+.athumb{position:relative;display:grid;place-items:center;width:52px;height:52px;border-radius:10px;background:var(--surface);border:1px solid var(--line);overflow:hidden;color:var(--lime);text-decoration:none}
+.athumb .aext{font-size:11px;font-weight:800;letter-spacing:.06em}
+.athumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.anome{min-width:0;display:block;color:var(--ink);text-decoration:none}
+.anome b{display:block;font-size:14px;font-weight:700;overflow-wrap:anywhere;line-height:1.25}
+.anome small{display:block;margin-top:2px;color:var(--dim);font-size:12px;font-weight:600}
+.abx{display:grid;place-items:center;width:38px;height:38px;border-radius:8px;color:var(--lime);text-decoration:none;font-size:19px;line-height:1}
+.abx:hover{background:var(--lime-soft)}
+.aitem.up .abar{height:5px;border-radius:3px;background:var(--surface);overflow:hidden;margin-top:6px}
+.aitem.up .abar i{display:block;height:100%;width:0;background:var(--lime);transition:width .15s}
+.aitem.erro small{color:var(--coral);font-weight:700}
+.aadd{margin-top:8px;width:100%;border:1px dashed var(--lime-line);background:transparent;border-radius:10px;padding:8px;color:var(--lime);font-weight:800;min-height:42px}
+.aadd:hover{background:var(--lime-soft)}
+.adica{margin:8px 2px 0;color:var(--dim);font-size:12px;line-height:1.4}
+li.linha.arrasta{outline:2px dashed var(--lime);outline-offset:-2px;border-radius:12px;background:var(--lime-soft)}
+.anexin{position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0}
+
 /* bolinha de "pago" com lápis */
 .pg{position:relative;display:grid;place-items:center;width:38px;height:44px;padding:0;border:0;background:transparent;overflow:visible}
 .pg svg{display:block;overflow:visible}
@@ -546,7 +573,7 @@ body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(saf
   /*FIM_DU*/
 
   var state = {
-    abertos: {},
+    abertos: {}, anx: {}, subindo: {}, anxFoco: null, anxAlvo: null,
     status: 'carregando', linhas: [], renda: 0, mes: hojeMes(), canWrite: true,
     dirty: false, hold: null, holdT: null, focusId: null, delArm: null, animUntil: 0, flushT: null
   };
@@ -796,9 +823,131 @@ body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(saf
     var fixo = l.grupo === 'fixo', fx = fixaEf(l), w = state.canWrite, chips = '';
     chips += '<button type="button" class="tag' + (fx ? ' on' : '') + '" data-action="fixa" data-id="' + esc(l.id) + '" aria-pressed="' + fx + '" aria-label="' + (fx ? 'Valor fixo: repete todo mês com o mesmo valor. Toque para desmarcar.' : 'Marcar como valor fixo: repete todo mês com o mesmo valor.') + '"' + (w ? '' : ' disabled') + '>' + TAGSVG + (fx ? 'Valor fixo' : 'Fixar valor') + '</button>';
     if (l.pago) chips += '<label class="pchip">Pago<input type="date" class="pdata" data-lf="p" data-id="' + esc(l.id) + '" value="' + esc(l.pagoEm || '') + '" aria-label="Data em que foi pago"' + (w ? '' : ' disabled') + '></label>';
+    var anx = anexHtml(l);
     var lanc = fixo ? { pill: '', panel: '' } : lancHtml(l, itens);
-    return '<div class="sub"><div class="chips">' + chips + lanc.pill + '</div>' + lanc.panel + '</div>';
+    return '<div class="sub"><div class="chips">' + chips + anx.pill + lanc.pill + '</div>' + anx.panel + lanc.panel + '</div>';
   }
+  /* ---------- anexos (só no app próprio): print, PDF, Excel, vídeo... de cada pagamento ---------- */
+  var MAX_ANEXO = 40 * 1024 * 1024, contUp = 0;
+  var CLIPE = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>';
+  function tamanhoTxt(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return Math.round(b / 1024) + ' KB';
+    return (b / 1048576).toFixed(b < 10485760 ? 1 : 0).replace('.', ',') + ' MB';
+  }
+  function rotuloAnexo(a) {
+    var n = String(a.nome || ''), ext = ((/\.([A-Za-z0-9]{1,8})$/.exec(n) || [])[1] || '').toLowerCase(), t = String(a.tipo || '');
+    if (ext === 'pdf' || t === 'application/pdf') return 'PDF';
+    if (/^(xlsx?|xlsm|csv|numbers|ods)$/.test(ext)) return 'XLS';
+    if (/^(docx?|pages|odt|rtf)$/.test(ext)) return 'DOC';
+    if (/^(pptx?|key|odp)$/.test(ext)) return 'PPT';
+    if (/^(zip|rar|7z)$/.test(ext)) return 'ZIP';
+    if (/^video\//.test(t) || /^(mp4|mov|m4v|webm|avi|mkv)$/.test(ext)) return 'VÍDEO';
+    if (/^audio\//.test(t) || /^(mp3|m4a|wav|aac)$/.test(ext)) return 'ÁUDIO';
+    if (/^image\//.test(t)) return 'IMG';
+    if (ext === 'txt') return 'TXT';
+    return ext && ext.length <= 4 ? ext.toUpperCase() : 'ARQ';
+  }
+  function dataHoraTxt(ms) {
+    var d = new Date(ms || 0);
+    return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+  function anexHtml(l) {
+    if (!(S && S.anexar)) return { pill: '', panel: '' };
+    var lista = Array.isArray(l.anexos) ? l.anexos : [], ups = state.subindo[l.id] || [], n = lista.length, aberto = !!state.anx[l.id], w = state.canWrite;
+    var pill = '<button type="button" class="apill' + (n ? ' tem' : '') + '" data-action="anx" data-id="' + esc(l.id) + '" aria-expanded="' + aberto + '" aria-label="' + (n ? n + (n === 1 ? ' arquivo anexado' : ' arquivos anexados') + ' em ' + esc(l.nome || 'linha') : 'Anexar arquivo em ' + esc(l.nome || 'linha')) + '">' +
+      CLIPE + (n ? '<span class="sg" aria-hidden="true">▸</span>' + n + (n === 1 ? ' arquivo' : ' arquivos') : 'Anexar') + '</button>';
+    if (!aberto) return { pill: pill, panel: '' };
+    var corpo = lista.map(function (a) {
+      var url = '/api/anexos/' + encodeURIComponent(a.id), arm = state.delArm === a.id, rot = rotuloAnexo(a);
+      var img = /^image\/(png|jpe?g|gif|webp|avif|bmp)$/.test(a.tipo || '') && (a.tamanho || 0) <= 6 * 1048576;
+      return '<div class="aitem" data-aid="' + esc(a.id) + '">' +
+        '<a class="athumb" href="' + url + '" target="_blank" rel="noopener" aria-label="Abrir ' + esc(a.nome) + '"><span class="aext">' + esc(rot) + '</span>' + (img ? '<img src="' + url + '" alt="" loading="lazy">' : '') + '</a>' +
+        '<a class="anome" href="' + url + '" target="_blank" rel="noopener"><b>' + esc(a.nome) + '</b><small>' + esc(rot + ' · ' + tamanhoTxt(a.tamanho || 0) + ' · ' + dataHoraTxt(a.criado)) + '</small></a>' +
+        '<a class="abx" href="' + url + '?baixar=1" download="' + esc(a.nome) + '" aria-label="Baixar ' + esc(a.nome) + '">⤓</a>' +
+        (w ? '<button type="button" class="del' + (arm ? ' arm' : '') + '" data-action="adel" data-id="' + esc(l.id) + '" data-aid="' + esc(a.id) + '" aria-label="Excluir ' + esc(a.nome) + '">' + (arm ? 'Excluir?' : '×') + '</button>' : '') +
+        '</div>';
+    }).join('');
+    var subindo = ups.map(function (u) {
+      var p = Math.round((u.pct || 0) * 100);
+      return '<div class="aitem up' + (u.erro ? ' erro' : '') + '" data-up="' + esc(u.k) + '">' +
+        '<div class="athumb"><span class="aext">' + esc(rotuloAnexo({ nome: u.nome, tipo: u.tipo })) + '</span></div>' +
+        '<div class="anome"><b>' + esc(u.nome) + '</b>' + (u.erro ? '<small>' + esc(u.erro) + '</small>' : '<div class="abar"><i style="width:' + p + '%"></i></div><small>' + (p >= 100 ? 'Salvando…' : 'Enviando ' + p + '%') + '</small>') + '</div>' +
+        (u.erro ? '<span></span><button type="button" class="del" data-action="aup-x" data-id="' + esc(l.id) + '" data-k="' + esc(u.k) + '" aria-label="Dispensar aviso">×</button>' : '') +
+        '</div>';
+    }).join('');
+    return { pill: pill, panel: '<div class="apanel">' + corpo + subindo +
+      (!n && !ups.length ? '<p class="adica" style="margin:0 2px 4px">Nenhum arquivo ainda.</p>' : '') +
+      (w ? '<button type="button" class="aadd" data-action="aadd" data-id="' + esc(l.id) + '">+ Adicionar arquivos</button>' +
+        '<p class="adica">Print, PDF, Excel, vídeo… qualquer arquivo, até 40 MB cada. No Mac também dá para arrastar o arquivo até esta linha ou colar um print com ⌘V.</p>' : '') +
+      '</div>' };
+  }
+  function pintarUp(u) {
+    var el = document.querySelector('[data-up="' + u.k + '"]'); if (!el) return;
+    var p = Math.round((u.pct || 0) * 100), b = el.querySelector('.abar i'), sm = el.querySelector('small');
+    if (b) b.style.width = p + '%';
+    if (sm) sm.textContent = p >= 100 ? 'Salvando…' : 'Enviando ' + p + '%';
+  }
+  function enviarArquivos(id, arquivos) {
+    var l = acharLinha(id), lista = Array.prototype.slice.call(arquivos || []);
+    if (!l || !state.canWrite || !(S && S.anexar) || !lista.length) return;
+    state.anx[id] = true; state.anxFoco = id;
+    var ups = state.subindo[id] = state.subindo[id] || [];
+    var novos = lista.map(function (f) { return { k: 'u' + (++contUp), nome: f.name || 'arquivo', tipo: f.type || '', pct: 0, erro: '', f: f }; });
+    novos.forEach(function (u) { ups.push(u); });
+    renderGrupos();
+    var feitos = 0;
+    novos.reduce(function (p, u) {
+      return p.then(function () {
+        if (u.f.size === 0) { u.erro = 'Arquivo vazio.'; return; }
+        if (u.f.size > MAX_ANEXO) { u.erro = 'Grande demais (limite de 40 MB).'; return; }
+        return S.anexar(id, u.f, function (x) { u.pct = x; pintarUp(u); }).then(function () {
+          feitos++; var i = ups.indexOf(u); if (i >= 0) ups.splice(i, 1);
+        }, function (e) { u.erro = (e && e.msg) || 'Não foi possível enviar.'; });
+      }).then(function () { u.f = null; renderGrupos(); });
+    }, Promise.resolve()).then(function () { if (feitos) toast(feitos === 1 ? 'Arquivo anexado' : feitos + ' arquivos anexados'); });
+  }
+  (function () {
+    var inp = document.createElement('input');
+    inp.type = 'file'; inp.multiple = true; inp.id = 'anexInput'; inp.className = 'anexin'; inp.tabIndex = -1; inp.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(inp);
+    inp.addEventListener('change', function () {
+      var arq = Array.prototype.slice.call(inp.files || []), id = state.anxAlvo;
+      inp.value = '';
+      if (id && arq.length) enviarArquivos(id, arq);
+    });
+    document.addEventListener('error', function (ev) { var t = ev.target; if (t && t.tagName === 'IMG' && t.closest && t.closest('.athumb')) t.remove(); }, true);   /* miniatura que não abre (ex.: HEIC) some e fica só o ícone */
+    function temArquivos(ev) { var t = ev.dataTransfer && ev.dataTransfer.types; return !!t && Array.prototype.indexOf.call(t, 'Files') >= 0; }
+    function limparMarcas() { var m = document.querySelectorAll('li.linha.arrasta'); for (var i = 0; i < m.length; i++) m[i].classList.remove('arrasta'); }
+    ['dragenter', 'dragover'].forEach(function (tp) {
+      document.addEventListener(tp, function (ev) {
+        if (!temArquivos(ev)) return;
+        ev.preventDefault();
+        var li = ev.target.closest && ev.target.closest('li[data-row]');
+        limparMarcas();
+        if (li && S && S.anexar && state.canWrite) { li.classList.add('arrasta'); ev.dataTransfer.dropEffect = 'copy'; } else ev.dataTransfer.dropEffect = 'none';
+      });
+    });
+    document.addEventListener('dragleave', function (ev) { if (!ev.relatedTarget) limparMarcas(); });
+    document.addEventListener('drop', function (ev) {
+      if (!temArquivos(ev)) return;
+      ev.preventDefault(); limparMarcas();
+      var li = ev.target.closest && ev.target.closest('li[data-row]');
+      if (li) enviarArquivos(li.getAttribute('data-row'), ev.dataTransfer.files);
+    });
+    document.addEventListener('paste', function (ev) {      /* ⌘V de um print, com o painel de anexos aberto */
+      var cd = ev.clipboardData, id = state.anxFoco;
+      if (!cd || !cd.files || !cd.files.length || !id || !state.anx[id] || !(S && S.anexar)) return;
+      ev.preventDefault();
+      var d = new Date(), stamp = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + '.' + pad(d.getMinutes()) + '.' + pad(d.getSeconds());
+      var arr = Array.prototype.map.call(cd.files, function (f, i) {
+        if (f.name && !/^image\.(png|jpe?g|gif|webp)$/i.test(f.name)) return f;
+        var ext = (/^image\/(\w+)/.exec(f.type) || [, 'png'])[1].replace('jpeg', 'jpg');
+        try { return new File([f], 'Print ' + stamp + (i ? ' (' + (i + 1) + ')' : '') + '.' + ext, { type: f.type }); } catch (e) { return f; }
+      });
+      enviarArquivos(id, arr);
+    });
+  })();
   function lancHtml(l, itens) {
     var aberto = !!state.abertos[l.id], n = itens.length;
     var pill = '<button type="button" class="lpill' + (n ? ' tem' : '') + '" data-action="lanc" data-id="' + esc(l.id) + '" aria-expanded="' + aberto + '">' +
@@ -1057,6 +1206,31 @@ body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(saf
           function () { return api('POST', '/api/linhas/lote', { linhas: arr.map(function (x) { return Object.assign({ id: x.id }, x.doc); }) }); });
       },
       setRenda: function (v) { return mutar(function () { renda = v; }, function () { return api('PUT', '/api/renda', { salarioCentavos: v }); }); },
+      anexar: function (id, file, aoProgredir) {
+        pend++;
+        return new Promise(function (ok, falha) {
+          var x = new XMLHttpRequest();
+          x.open('POST', '/api/linhas/' + encodeURIComponent(id) + '/anexos');
+          x.setRequestHeader('X-Nome', encodeURIComponent(file.name || 'arquivo'));
+          x.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+          x.upload.onprogress = function (e) { if (e.lengthComputable && aoProgredir) aoProgredir(e.loaded / e.total); };
+          x.onerror = x.ontimeout = function () { pend--; falha({ code: 'rede', msg: 'Sem conexão. Tente de novo.' }); };
+          x.onload = function () {
+            pend--;
+            var r = null; try { r = JSON.parse(x.responseText); } catch (e) {}
+            if (x.status === 401) { location.href = '/login'; return falha({ code: 'auth' }); }
+            if (x.status >= 200 && x.status < 300 && r && r.anexo) {
+              if (linhas[id]) linhas[id] = Object.assign({}, linhas[id], { anexos: (linhas[id].anexos || []).concat([r.anexo]) });
+              rev = r.rev; emitir(); ok(r.anexo);
+            } else falha({ code: 'http', msg: (r && r.erro) || 'Não foi possível enviar.' });
+          };
+          x.send(file);
+        });
+      },
+      desanexar: function (id, aid) {
+        return mutar(function () { if (linhas[id]) { var r = (linhas[id].anexos || []).filter(function (a) { return a.id !== aid; }); linhas[id] = Object.assign({}, linhas[id]); if (r.length) linhas[id].anexos = r; else delete linhas[id].anexos; } },
+          function () { return api('DELETE', '/api/linhas/' + encodeURIComponent(id) + '/anexos/' + encodeURIComponent(aid)); });
+      },
       iniciar: function (cb) {
         cbs = cb; carregar();
         setInterval(carregar, 20000);
@@ -1122,6 +1296,19 @@ body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(saf
       var lf = acharLinha(id); if (!lf || !state.canWrite) return;
       var nf = !fixaEf(lf);
       enfileirar(function () { return S.update(id, { fixa: nf }); }, nf ? 'Valor fixo: repete todo mês' : 'Não repete o valor no próximo mês');
+    }
+    else if (a === 'anx') { state.anx[id] = !state.anx[id]; state.anxFoco = id; state.delArm = null; renderGrupos(); }
+    else if (a === 'aadd') { if (!state.canWrite) return; state.anxAlvo = id; state.anxFoco = id; var fi = document.getElementById('anexInput'); fi.value = ''; fi.click(); }
+    else if (a === 'aup-x') {
+      var ku = el.getAttribute('data-k'), lu = state.subindo[id] || [];
+      state.subindo[id] = lu.filter(function (u) { return u.k !== ku; }); renderGrupos();
+    }
+    else if (a === 'adel') {
+      var aid = el.getAttribute('data-aid');
+      if (state.delArm !== aid) {
+        state.delArm = aid; renderGrupos();
+        setTimeout(function () { if (state.delArm === aid) { state.delArm = null; if (!ocupado()) renderGrupos(); } }, 3500);
+      } else { state.delArm = null; enfileirar(function () { return S.desanexar(id, aid); }, 'Arquivo excluído'); }
     }
     else if (a === 'ladd') adicionarGasto(id);
     else if (a === 'ldel') {

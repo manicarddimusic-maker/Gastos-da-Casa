@@ -38,6 +38,9 @@ Serviço do app > **Settings** > **Networking** > **Generate Domain**. Abra o en
 2. Toque no botão de compartilhar (quadrado com seta) > **Adicionar à Tela de Início** > **Adicionar**.
 3. O ícone "Gastos" aparece na tela. Abra por ele: tela cheia, sem barra do navegador.
 
+## Anexos nos pagamentos
+Em cada linha há o botão **Anexar** (clipe). Dentro dele dá para juntar print, PDF, Excel, vídeo ou qualquer arquivo (até 40 MB cada, 30 por pagamento). No iPhone, o botão **+ Adicionar arquivos** abre Fotos, Arquivos ou a câmera. No Mac, também dá para arrastar o arquivo até a linha ou colar um print com ⌘V. Os arquivos ficam no mesmo banco Postgres dos lançamentos (e somem se a linha for excluída). Se o banco encher, o Railway avisa no painel do Postgres.
+
 ## Fotos da casa e das cachorras
 As fotos ficam na pasta `views/fotos` e só aparecem depois de digitar a senha.
 
