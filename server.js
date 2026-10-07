@@ -365,6 +365,34 @@ async function iniciar() {
     res.send(dados);
   });
 
+  /* relatório em PDF (só com sessão aberta, como o resto de /api) */
+  const { gerarRelatorio, addMes } = require('./relatorio');
+  app.get('/api/relatorio.pdf', async (req, res) => {
+    let de = String(req.query.de || ''), ate = String(req.query.ate || '');
+    if (!MES_RE.test(de) || !MES_RE.test(ate)) return res.status(400).type('text').send('Período inválido.');
+    if (de > ate) [de, ate] = [ate, de];
+    let n = 1, m = de;
+    while (m < ate && n < 60) { m = addMes(m, 1); n++; }
+    if (n > 36) return res.status(400).type('text').send('Escolha no máximo 36 meses.');
+    const baixar = req.query.baixar === '1';
+    const nome = 'Relatorio-Gastos-da-Casa-' + (de === ate ? de : de + '_a_' + ate) + '.pdf';
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', (baixar ? 'attachment' : 'inline') + '; filename="' + nome + '"');
+    res.setHeader('Cache-Control', 'no-store');
+    res.removeHeader('Content-Security-Policy');   // o leitor de PDF do navegador precisa disso
+    try {
+      await gerarRelatorio({
+        estado: JSON.parse(JSON.stringify(estado)), de, ate,
+        detalhes: req.query.detalhes !== '0', comprovantes: req.query.comp === '1',
+        lerArquivo: (id, ini, len) => armazenamento.lerArquivo(id, ini, len), geradoEm: new Date()
+      }, res);
+    } catch (e) {
+      console.error('Falha no relatório:', e);
+      if (!res.headersSent) res.status(500).type('text').send('Não foi possível gerar o relatório.');
+      else res.destroy();
+    }
+  });
+
   app.use('/api', api);
 
   app.use((req, res) => res.status(404).type('text').send('Não encontrado.'));

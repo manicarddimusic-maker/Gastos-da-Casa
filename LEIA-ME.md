@@ -41,6 +41,9 @@ Serviço do app > **Settings** > **Networking** > **Generate Domain**. Abra o en
 ## Anexos nos pagamentos
 Em cada linha há o botão **Anexar** (clipe). Dentro dele dá para juntar print, PDF, Excel, vídeo ou qualquer arquivo (até 40 MB cada, 30 por pagamento). No iPhone, o botão **+ Adicionar arquivos** abre Fotos, Arquivos ou a câmera. No Mac, também dá para arrastar o arquivo até a linha ou colar um print com ⌘V. Os arquivos ficam no mesmo banco Postgres dos lançamentos (e somem se a linha for excluída). Se o banco encher, o Railway avisa no painel do Postgres.
 
+## Relatório em PDF
+No topo do app, o botão **Relatório** abre a janela de relatório. Escolha o período (Mês aberto, Ano todo, Tudo, ou De/Até com mês e ano), marque se quer os **lançamentos detalhados** e os **comprovantes** (os prints e fotos anexados aparecem dentro do PDF) e toque em **Abrir PDF** ou **Baixar PDF**. O PDF traz capa, resumo (salário, lançado, pago, disponível, a pagar), parcelas em andamento, custos fixos e variáveis com data de pagamento, maiores gastos e lista de anexos; em vários meses, também o gráfico mês a mês, a tabela comparativa e o ranking de gastos. Até 36 meses por relatório. Ele é gerado na hora, no servidor, só com a sessão aberta.
+
 ## Fotos da casa e das cachorras
 As fotos ficam na pasta `views/fotos` e só aparecem depois de digitar a senha.
 
