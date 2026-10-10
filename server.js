@@ -15,7 +15,11 @@ if (!SENHAS.length || SENHAS.some((x) => x.length < 3)) {
 }
 const SEGREDO = process.env.SESSION_SECRET || crypto.createHash('sha256').update('gastos|' + SENHAS.join('|')).digest('hex');
 const COOKIE = 'gc_sessao';
-const HORAS = 12; /* a senha não fica salva: o acesso vale no máximo 12h, e o cookie some ao fechar o app/navegador */
+const HORAS = 12; /* a senha não fica salva: o acesso vale no máximo 12h */
+/* O acesso só se mantém enquanto o app está em uso: o cookie vale por alguns minutos e é renovado a cada requisição.
+   Assim dá para abrir o PDF, voltar, compartilhar (WhatsApp, e-mail...) e continuar no app sem digitar a senha de novo;
+   ficando mais que isso fora do app, a senha é pedida outra vez. */
+const SESSAO_MIN = Math.min(240, Math.max(1, Number(process.env.SESSAO_MINUTOS) || 15));
 
 /* ---------- sessão por cookie assinado ---------- */
 function assinar(valor) {
@@ -48,7 +52,8 @@ function autenticado(req) {
 }
 function gravarCookie(req, res, token, maxAge) {
   const partes = [COOKIE + '=' + encodeURIComponent(token), 'Path=/', 'HttpOnly', 'SameSite=Lax'];
-  if (maxAge === 0) partes.push('Max-Age=0'); /* sem Max-Age = cookie de sessão (some ao fechar) */
+  if (maxAge === 0) partes.push('Max-Age=0');
+  else partes.push('Max-Age=' + (maxAge > 0 ? maxAge : SESSAO_MIN * 60));
   if (req.secure) partes.push('Secure');
   res.setHeader('Set-Cookie', partes.join('; '));
 }
@@ -219,7 +224,10 @@ async function iniciar() {
 
   /* a partir daqui, só com senha */
   app.use((req, res, next) => {
-    if (autenticado(req)) return next();
+    if (autenticado(req)) {
+      gravarCookie(req, res, lerCookies(req)[COOKIE]);   // renova a janela de uso (mesmo token, não estende as 12h)
+      return next();
+    }
     if (req.path.startsWith('/api/')) return res.status(401).json({ erro: 'login' });
     res.redirect('/login');
   });

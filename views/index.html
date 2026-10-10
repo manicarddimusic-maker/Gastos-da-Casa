@@ -342,7 +342,8 @@ li.linha.arrasta{outline:2px dashed var(--lime);outline-offset:-2px;border-radiu
 .relinfo{margin:0;font-size:13px;color:var(--muted);min-height:18px}
 .relinfo.erro{color:var(--coral);font-weight:700}
 .relacoes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.relbt{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;border-radius:14px;font-weight:800;font-size:15px;text-decoration:none;border:1px solid var(--lime-line);color:var(--lime);background:transparent}
+.relbt{font:inherit;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;border-radius:14px;font-weight:800;font-size:15px;text-decoration:none;border:1px solid var(--lime-line);color:var(--lime);background:transparent}
+.relacoes .prim{grid-column:1/-1}
 .relbt.prim{background:var(--lime);color:var(--lime-ink);border-color:var(--lime);box-shadow:var(--glow)}
 .relbt[aria-disabled="true"]{opacity:.4;pointer-events:none;box-shadow:none}
 .relbt svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -471,8 +472,9 @@ body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(saf
     <label class="relop"><input type="checkbox" id="relComp"><div><b>Incluir comprovantes</b><span>Mostra no PDF os prints e fotos anexados aos pagamentos.</span></div></label>
     <p class="relinfo" id="relInfo" role="status" aria-live="polite"></p>
     <div class="relacoes">
-      <a class="relbt" id="relBaixar" href="#" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg>Baixar PDF</a>
-      <a class="relbt prim" id="relAbrir" href="#" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>Abrir PDF</a>
+      <button type="button" class="relbt prim" id="relEnviar" aria-disabled="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Enviar para alguém</button>
+      <button type="button" class="relbt" id="relBaixar" aria-disabled="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg>Baixar</button>
+      <a class="relbt" id="relAbrir" href="#" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>Abrir</a>
     </div>
   </div>
 </div>
@@ -639,7 +641,7 @@ body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(saf
 
   var state = {
     abertos: {}, anx: {}, subindo: {}, anxFoco: null, anxAlvo: null,
-    status: 'carregando', linhas: [], renda: 0, mes: hojeMes(), canWrite: true,
+    status: 'carregando', linhas: [], renda: 0, mes: mesLembrado(), canWrite: true,
     dirty: false, hold: null, holdT: null, focusId: null, delArm: null, animUntil: 0, flushT: null
   };
 
@@ -748,7 +750,11 @@ body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(saf
   }
 
   /* ---------- telas ---------- */
-  function renderTopo() { $('#mesTitulo').textContent = mesTitulo(state.mes); }
+  function mesLembrado() {   /* ao voltar de um PDF o app recarrega: reabre no mesmo mês em que a pessoa estava */
+    try { var m = sessionStorage.getItem('gc_mes'); if (/^\d{4}-(0[1-9]|1[0-2])$/.test(m || '')) return m; } catch (e) {}
+    return hojeMes();
+  }
+  function renderTopo() { $('#mesTitulo').textContent = mesTitulo(state.mes); try { sessionStorage.setItem('gc_mes', state.mes); } catch (e) {} }
 
   function renderResumo() {
     var ok = state.status === 'ok';
@@ -1156,7 +1162,7 @@ body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(saf
     var btn = $('#btnRel'), dlg = $('#relDlg'); if (!btn || !dlg) return;
     btn.hidden = false;
     var NOMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-    var sDM = $('#relDeM'), sDA = $('#relDeA'), sAM = $('#relAteM'), sAA = $('#relAteA'), cDet = $('#relDet'), cComp = $('#relComp'), aAbrir = $('#relAbrir'), aBaixar = $('#relBaixar'), info = $('#relInfo'), chips = $('#relChips'), dono = null;
+    var sDM = $('#relDeM'), sDA = $('#relDeA'), sAM = $('#relAteM'), sAA = $('#relAteA'), cDet = $('#relDet'), cComp = $('#relComp'), aAbrir = $('#relAbrir'), bBaixar = $('#relBaixar'), bEnviar = $('#relEnviar'), info = $('#relInfo'), chips = $('#relChips'), dono = null;
     [sDM, sAM].forEach(function (sel) { sel.innerHTML = NOMES.map(function (n, i) { return '<option value="' + (i < 9 ? '0' : '') + (i + 1) + '">' + n + '</option>'; }).join(''); });
     function anos() {
       var set = {}, hoje = new Date().getFullYear();
@@ -1192,9 +1198,57 @@ body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(saf
       info.textContent = !ok ? 'Escolha no máximo 36 meses.' : (de === ate ? mesTitulo(de) : mesTitulo(de) + ' a ' + mesTitulo(ate)) + ' · ' + nl + (nl === 1 ? ' linha' : ' linhas') + (nl ? '' : ' (sem lançamentos)');
       var q = '?de=' + de + '&ate=' + ate + '&detalhes=' + (cDet.checked ? 1 : 0) + '&comp=' + (cComp.checked ? 1 : 0);
       aAbrir.setAttribute('href', '/api/relatorio.pdf' + q);
-      aBaixar.setAttribute('href', '/api/relatorio.pdf' + q + '&baixar=1');
-      [aAbrir, aBaixar].forEach(function (a) { a.setAttribute('aria-disabled', ok ? 'false' : 'true'); });
+      aAbrir.setAttribute('aria-disabled', ok ? 'false' : 'true');
+      preparar(ok ? '/api/relatorio.pdf' + q : null, de, ate);
     }
+    /* O PDF é gerado em segundo plano assim que o período muda; "Enviar" e "Baixar" só liberam quando ele está pronto,
+       porque o menu de envio do iPhone exige que seja aberto logo após o toque (sem esperar o servidor). */
+    var pronto = null, geracao = 0, espera = null, baseInfo = '';
+    function nomeArquivo(de, ate) { return 'Relatorio-Gastos-da-Casa-' + (de === ate ? de : de + '_a_' + ate) + '.pdf'; }
+    function liberar(ok) { [bEnviar, bBaixar].forEach(function (b) { b.setAttribute('aria-disabled', ok ? 'false' : 'true'); }); }
+    function tamanho(n) { return n < 1048576 ? Math.max(1, Math.round(n / 1024)) + ' KB' : (n / 1048576).toFixed(1).replace('.', ',') + ' MB'; }
+    function preparar(url, de, ate) {
+      pronto = null; liberar(false); clearTimeout(espera);
+      var minha = ++geracao;
+      baseInfo = info.textContent;
+      if (!url) return;
+      info.textContent = baseInfo + ' · preparando o PDF…';
+      espera = setTimeout(function () {
+        fetch(url, { credentials: 'same-origin', cache: 'no-store' }).then(function (r) {
+          if (r.status === 401) { location.href = '/login'; throw new Error('login'); }
+          if (!r.ok) throw new Error('http');
+          return r.blob();
+        }).then(function (b) {
+          if (minha !== geracao) return;
+          pronto = new File([b], nomeArquivo(de, ate), { type: 'application/pdf' });
+          info.textContent = baseInfo + ' · PDF pronto (' + tamanho(b.size) + ')';
+          liberar(true);
+        }).catch(function () {
+          if (minha !== geracao) return;
+          info.classList.add('erro'); info.textContent = 'Não consegui gerar o PDF agora. Mude o período ou tente de novo.';
+        });
+      }, 450);
+    }
+    function salvarArquivo(f) {
+      var u = URL.createObjectURL(f), a = document.createElement('a');
+      a.href = u; a.download = f.name; a.style.display = 'none';
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { a.remove(); URL.revokeObjectURL(u); }, 60000);
+    }
+    bBaixar.addEventListener('click', function () {
+      if (bBaixar.getAttribute('aria-disabled') === 'true' || !pronto) return;
+      salvarArquivo(pronto); toast('PDF baixado');
+    });
+    bEnviar.addEventListener('click', function () {
+      if (bEnviar.getAttribute('aria-disabled') === 'true' || !pronto) return;
+      var f = pronto;
+      if (navigator.canShare && navigator.share && navigator.canShare({ files: [f] })) {
+        navigator.share({ files: [f], title: 'Relatório · Gastos da Casa' }).catch(function (e) {
+          if (e && e.name === 'AbortError') return;       /* a pessoa fechou o menu de envio */
+          salvarArquivo(f); toast('Não consegui abrir o envio; o PDF foi baixado');
+        });
+      } else { salvarArquivo(f); toast('Este aparelho não abre o menu de envio; o PDF foi baixado'); }
+    });
     function abrir() {
       var h = anos().map(function (y) { return '<option>' + y + '</option>'; }).join('');
       sDA.innerHTML = h; sAA.innerHTML = h;
@@ -1203,14 +1257,14 @@ body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(saf
       dlg.hidden = false; document.body.classList.add('relaberto');
       var c = chips.firstElementChild; if (c) c.focus();
     }
-    function fechar() { dlg.hidden = true; document.body.classList.remove('relaberto'); if (dono && dono.focus) dono.focus(); }
+    function fechar() { geracao++; clearTimeout(espera); pronto = null; dlg.hidden = true; document.body.classList.remove('relaberto'); if (dono && dono.focus) dono.focus(); }
     btn.addEventListener('click', abrir);
     $('#relFecha').addEventListener('click', fechar);
     dlg.addEventListener('click', function (ev) { if (ev.target === dlg) fechar(); });
     document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && !dlg.hidden) fechar(); });
     chips.addEventListener('click', function (ev) { var b = ev.target.closest('[data-p]'); if (!b) return; var q = periodoPreset(b.getAttribute('data-p')); definir(q[0], q[1]); });
     [sDM, sDA, sAM, sAA, cDet, cComp].forEach(function (el) { el.addEventListener('change', atualizar); });
-    [aAbrir, aBaixar].forEach(function (a) { a.addEventListener('click', function (ev) { if (a.getAttribute('aria-disabled') === 'true') { ev.preventDefault(); return; } toast('Gerando o PDF…'); }); });
+    aAbrir.addEventListener('click', function (ev) { if (aAbrir.getAttribute('aria-disabled') === 'true') { ev.preventDefault(); return; } toast('Abrindo o PDF…'); });
   }
 
   function toast(msg) {
