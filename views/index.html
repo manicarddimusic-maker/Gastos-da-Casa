@@ -1117,7 +1117,7 @@ body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(saf
       if (state.status === 'sem-db') corpo = '<p class="vazio">Entre na sua conta do Claude para ver e salvar os gastos desta página.</p>';
       else if (state.status === 'erro') corpo = '<p class="vazio">Não foi possível carregar agora. Recarregue em alguns instantes.</p>';
       else if (!ok) corpo = '<p class="vazio">Carregando…</p>';
-      else corpo = (it.length ? '<div class="cabeca ' + k + '" aria-hidden="true">' + '<span></span><span class="l">' + (g === 'entrada' ? 'De quem / serviço' : 'Conta') + '</span><span class="r">' + (g === 'entrada' ? 'Entrada (R$)' : 'Gasto (R$)') + '</span><span></span></div><ul class="linhas">' + it.map(linhaHtml).join('') + '</ul>' : '<p class="vazio">' + cfg.vazio + '</p>') +
+      else corpo = (it.length ? '<div class="cabeca ' + k + '" aria-hidden="true">' + '<span></span><span class="l">' + (g === 'entrada' ? 'De quem / serviço' : 'Conta') + '</span><span class="r">' + (g === 'entrada' ? 'Valor (R$)' : 'Gasto (R$)') + '</span><span></span></div><ul class="linhas">' + it.map(linhaHtml).join('') + '</ul>' : '<p class="vazio">' + cfg.vazio + '</p>') +
         (state.canWrite ? '<button type="button" class="addl" data-action="add" data-grupo="' + g + '">' + (g === 'entrada' ? '+ Adicionar entrada' : '+ Adicionar linha') + '</button>' : '');
       box.innerHTML = '<header class="ghead">' + cabecalho + '</header>' + corpo;
       box.setAttribute('data-w', String(state.canWrite));
