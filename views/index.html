@@ -28,7 +28,7 @@
   --pink:#FF3D9A; --pink-soft:rgba(255,61,154,.14);
   --amber:#FFB81C; --amber-soft:rgba(255,184,28,.15);
   --coral:#FF5C6A; --coral-soft:rgba(255,92,106,.14);
-  --glow:0 0 30px rgba(198,255,26,.30);
+  --glow:0 0 30px rgba(198,255,26,.30); --cyan:#38D9F5;
   --f-display:'Unbounded',system-ui,sans-serif;
   --f-body:'Manrope',system-ui,sans-serif;
   --f-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
@@ -78,13 +78,14 @@ h1,h2{font-family:var(--f-display);margin:0;font-weight:700;letter-spacing:-.01e
 }
 
 /* grade */
-.grid{display:grid;gap:16px;grid-template-columns:minmax(0,1fr);grid-template-areas:"resumo" "fixo" "var" "evolucao"}
+.grid{display:grid;gap:16px;grid-template-columns:minmax(0,1fr);grid-template-areas:"resumo" "ent" "fixo" "var" "evolucao"}
 #areaResumo{grid-area:resumo;display:flex;flex-direction:column;gap:12px;min-width:0}
 #gFixo{grid-area:fixo}
 #gVar{grid-area:var}
+#gEnt{grid-area:ent}
 #cEvo{grid-area:evolucao}
 @media (min-width:900px){
-  .grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"resumo evolucao" "fixo var";align-items:start}
+  .grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"resumo evolucao" "fixo var" "ent .";align-items:start}
 }
 .card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;min-width:0}
 .card h2{font-size:15px}
@@ -155,15 +156,21 @@ input{font-size:16px}
 .gtot .m{font-size:20px}
 #gFixo .gtot .m{color:var(--lime)}
 #gVar .gtot .m{color:var(--pink)}
+#gEnt .gtot .m{color:var(--cyan)}
+.ent-ic{display:grid;place-items:center;width:30px;height:30px;margin-left:4px;border-radius:50%;background:rgba(56,217,245,.14);color:var(--cyan);font-weight:800;font-size:18px;line-height:1}
+#gEnt .chip{background:rgba(56,217,245,.14);color:var(--cyan)}
+#gEnt .addl{border-color:rgba(56,217,245,.4);color:var(--cyan)}
+#gEnt .addl:hover{background:rgba(56,217,245,.12)}
+#gEnt .pchip{background:rgba(56,217,245,.14);color:var(--cyan)}
 .chip{display:inline-block;font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:999px;background:var(--lime-soft);color:var(--lime);font-family:var(--f-body)}
 #gVar .chip{background:var(--pink-soft);color:var(--pink)}
 .chip.pend{background:var(--amber-soft);color:var(--amber)}
 .sw{display:inline-block;width:12px;height:12px;border-radius:4px;flex:none}
 .linhas{margin:0;padding:0;list-style:none;display:flex;flex-direction:column}
 .cabeca,.linha{display:grid;gap:4px;align-items:center}
-.cabeca.f,.linha.f{grid-template-columns:38px minmax(0,1fr) 96px minmax(30px,auto)}
+.cabeca.f,.linha.f,.cabeca.e,.linha.e{grid-template-columns:38px minmax(0,1fr) 96px minmax(30px,auto)}
 .cabeca.v,.linha.v{grid-template-columns:38px minmax(0,1fr) 96px minmax(30px,auto)}
-@media (min-width:900px){.cabeca.f,.linha.f{grid-template-columns:38px minmax(0,1fr) 116px minmax(30px,auto)}.cabeca.v,.linha.v{grid-template-columns:38px minmax(0,1fr) 116px minmax(30px,auto)}}
+@media (min-width:900px){.cabeca.f,.linha.f,.cabeca.e,.linha.e{grid-template-columns:38px minmax(0,1fr) 116px minmax(30px,auto)}.cabeca.v,.linha.v{grid-template-columns:38px minmax(0,1fr) 116px minmax(30px,auto)}}
 .cabeca{font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);padding:2px 0 6px}
 .cabeca .r{text-align:right;padding-right:9px}
 .cabeca .l{padding-left:9px}
@@ -429,6 +436,7 @@ body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(saf
       <div id="evolucao"></div>
     </section>
 
+    <section id="gEnt" class="card" aria-labelledby="tEnt" hidden></section>
     <section id="gFixo" class="card" aria-labelledby="tFixo"></section>
     <section id="gVar" class="card" aria-labelledby="tVar"></section>
   </div>
@@ -551,7 +559,8 @@ body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(saf
 
   var GRUPOS = {
     fixo: { id: 'tFixo', titulo: 'Custos fixos', dica: 'Contas que vêm todo mês', vazio: 'Nenhuma conta fixa neste mês.', cor: 'var(--lime)', box: '#gFixo' },
-    variavel: { id: 'tVar', titulo: 'Custos variáveis', dica: 'Gastos que mudam de mês para mês', vazio: 'Nenhum gasto variável neste mês.', cor: 'var(--pink)', box: '#gVar' }
+    variavel: { id: 'tVar', titulo: 'Custos variáveis', dica: 'Gastos que mudam de mês para mês', vazio: 'Nenhum gasto variável neste mês.', cor: 'var(--pink)', box: '#gVar' },
+    entrada: { id: 'tEnt', titulo: 'Entradas extras', dica: 'Dinheiro que entrou além do salário', vazio: 'Nenhuma entrada extra neste mês.', cor: 'var(--cyan)', box: '#gEnt' }
   };
   var SUGERIDAS = [
     ['fixo', 'Aluguel'], ['fixo', 'Condomínio'], ['fixo', 'Energia elétrica'], ['fixo', 'Água'], ['fixo', 'Internet'], ['fixo', 'Gás'],
@@ -645,8 +654,8 @@ body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(saf
     dirty: false, hold: null, holdT: null, focusId: null, delArm: null, animUntil: 0, flushT: null
   };
 
-  function doMes(key, grupo) {
-    return state.linhas.filter(function (l) { return l.mes === key && (!grupo || l.grupo === grupo); })
+  function doMes(key, grupo) {   /* sem 'grupo' = só gastos (fixos + variáveis); as entradas extras ficam de fora */
+    return state.linhas.filter(function (l) { return l.mes === key && (grupo ? l.grupo === grupo : l.grupo !== 'entrada'); })
       .sort(function (a, b) { return (a.criado || 0) - (b.criado || 0); });
   }
   function soma(arr) { return arr.reduce(function (t, l) { return t + (l.valorCentavos || 0); }, 0); }
@@ -760,7 +769,9 @@ body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(saf
     var ok = state.status === 'ok';
     function pagos(g) { return soma(doMes(state.mes, g).filter(function (l) { return l.pago; })); }
     var fP = soma(doMes(state.mes, 'fixo')), vP = soma(doMes(state.mes, 'variavel')), prevT = fP + vP;   /* previsto (tudo que está lançado) */
-    var f = pagos('fixo'), v = pagos('variavel'), tot = f + v, renda = state.renda;                     /* pago (o que foi ticado) */
+    var f = pagos('fixo'), v = pagos('variavel'), tot = f + v;                                          /* pago (o que foi ticado) */
+    var ent = soma(doMes(state.mes, 'entrada')), renda = state.renda + ent;                              /* renda do mês = salário + entradas extras */
+    var rotRenda = ent > 0 ? 'da renda' : 'do salário';
     var falta = prevT - tot;
     var prevKey = addMes(state.mes, -1), prev = soma(doMes(prevKey));
     var delta = '';
@@ -769,29 +780,29 @@ body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(saf
       delta = p === 0 ? 'Gasto igual ao de ' + mesNome(prevKey) : 'Você gastou ' + Math.abs(p) + '% ' + (p > 0 ? 'a mais' : 'a menos') + ' que em ' + mesNome(prevKey);
     }
     var eyebrow, big, neg = false;
-    if (renda > 0) { var disp = renda - tot; neg = disp < 0; eyebrow = neg ? 'Pagou além do salário' : 'Disponível no mês'; big = moeda(Math.abs(disp)); }
+    if (renda > 0) { var disp = renda - tot; neg = disp < 0; eyebrow = neg ? 'Pagou além da renda' : 'Disponível no mês'; big = moeda(Math.abs(disp)); }
     else { eyebrow = 'Total pago no mês'; big = moeda(tot); }
     var escala = Math.max(renda, tot, 1);
     var base = renda > 0 ? renda : tot;
-    var mix = '<div class="mix" role="img" aria-label="Fixos ' + pct(f, base) + '% e variáveis ' + pct(v, base) + '% ' + (renda > 0 ? 'do salário' : 'do total gasto') + '">' +
+    var mix = '<div class="mix" role="img" aria-label="Fixos ' + pct(f, base) + '% e variáveis ' + pct(v, base) + '% ' + (renda > 0 ? rotRenda : 'do total gasto') + '">' +
       '<i class="m1" style="width:' + f / escala * 100 + '%"></i><i class="m2" style="width:' + v / escala * 100 + '%"></i>' +
       (renda > 0 && tot > renda ? '<b class="mk" style="left:' + renda / escala * 100 + '%"></b>' : '') + '</div>';
     $('#resumo').innerHTML =
       '<div class="hero' + (neg ? ' neg' : '') + '"><p class="eyebrow">' + eyebrow + '</p>' +
       '<p class="total">' + (ok ? big : '<span class="m">—</span>') + '</p>' +
       '<div class="info">' +
-      (renda > 0 && ok ? '<p class="num">' + esc('Salário ' + brl(renda) + ' − pago ' + brl(tot)) + '</p>' : '') +
+      (renda > 0 && ok ? '<p class="num">' + esc('Salário ' + brl(state.renda) + (ent > 0 ? ' + entradas ' + brl(ent) : '') + ' − pago ' + brl(tot)) + '</p>' : '') +
       (ok && falta > 0 ? '<p class="num">' + esc('Ainda a pagar ' + brl(falta) + ' (ainda não descontado)') + '</p>' : '') +
       '<p class="pay"><i></i><span>' + esc(pagamentoTexto(state.mes)) + '</span></p>' +
       (delta ? '<p>' + esc(delta) + '</p>' : '') + '</div>' +
       mix +
       '<p class="legenda"><span><i class="sq" style="background:var(--lime-ink)"></i>Fixos</span><span><i class="sq" style="background:var(--pink)"></i>Variáveis</span>' +
-      (renda > 0 && ok ? '<span>Pago ' + pct(tot, renda) + '% do salário</span>' : '') + '</p>' +
+      (renda > 0 && ok ? '<span>Pago ' + pct(tot, renda) + '% ' + rotRenda + '</span>' : '') + '</p>' +
       '<dl class="stats">' +
-      '<div><dt>Salário</dt><dd>' + (renda > 0 ? moeda(renda) : '<span class="m">—</span>') + '</dd></div>' +
+      '<div><dt>Salário</dt><dd>' + (state.renda > 0 ? moeda(state.renda) : '<span class="m">—</span>') + '</dd>' + (ok && ent > 0 ? '<dd class="pc">+ ' + esc(brl(ent)) + ' de entradas</dd>' : '') + '</div>' +
       '<div><dt>Fixos pagos</dt><dd>' + (ok ? moeda(f) : '<span class="m">—</span>') + '</dd>' + (ok ? '<dd class="pc">de ' + esc(brl(fP)) + ' lançados</dd>' : '') + '</div>' +
       '<div><dt>Variáveis pagos</dt><dd>' + (ok ? moeda(v) : '<span class="m">—</span>') + '</dd>' + (ok ? '<dd class="pc">de ' + esc(brl(vP)) + ' lançados</dd>' : '') + '</div></dl>' +
-      (ok && state.canWrite ? '<button type="button" class="link" data-action="renda">' + (renda > 0 ? 'Editar salário' : 'Informar salário') + '</button>' : '') +
+      (ok && state.canWrite ? '<button type="button" class="link" data-action="renda">' + (state.renda > 0 ? 'Editar salário' : 'Informar salário') + '</button>' : '') +
       '</div>';
   }
 
@@ -873,13 +884,13 @@ body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(saf
   }
 
   function linhaHtml(l) {
-    var fixo = l.grupo === 'fixo', pago = !!l.pago, arm = state.delArm === l.id, ro = state.canWrite ? '' : ' readonly';
+    var fixo = l.grupo === 'fixo', ent = l.grupo === 'entrada', pago = !!l.pago, arm = state.delArm === l.id, ro = state.canWrite ? '' : ' readonly';
     var v = l.valorCentavos || 0, itens = Array.isArray(l.itens) ? l.itens : [], tem = itens.length > 0;
-    return '<li class="linha ' + (fixo ? 'f' : 'v') + '" data-row="' + esc(l.id) + '">' +
-      ('<button type="button" class="pg" data-action="pago" data-id="' + esc(l.id) + '" aria-pressed="' + pago + '" aria-label="' + esc((l.nome || 'Linha') + (pago ? ': pago. Toque para marcar como a pagar.' : ': a pagar. Toque para marcar como pago.')) + '"' + (state.canWrite ? '' : ' disabled') + '>' + pgSvg(l.id) + '</button>') +
+    return '<li class="linha ' + (ent ? 'e' : fixo ? 'f' : 'v') + '" data-row="' + esc(l.id) + '">' +
+      (ent ? '<span class="ent-ic" aria-hidden="true">+</span>' : '<button type="button" class="pg" data-action="pago" data-id="' + esc(l.id) + '" aria-pressed="' + pago + '" aria-label="' + esc((l.nome || 'Linha') + (pago ? ': pago. Toque para marcar como a pagar.' : ': a pagar. Toque para marcar como pago.')) + '"' + (state.canWrite ? '' : ' disabled') + '>' + pgSvg(l.id) + '</button>') +
       '<div class="nomew" data-v="' + esc(l.nome || '') + '"><textarea class="nome" rows="1" data-field="nome" data-id="' + esc(l.id) + '" maxlength="120" aria-label="Nome da linha" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" spellcheck="false"' + ro + '>' + esc(l.nome || '') + '</textarea></div>' +
       (tem ? '<button type="button" class="valor tot" data-action="lanc" data-id="' + esc(l.id) + '" aria-label="Total de ' + esc(l.nome || 'linha') + ': ' + esc(brl(v)) + '. Toque para ver os gastos.">' + num(v) + '</button>'
-        : '<input class="valor' + (v === 0 ? ' zero' : '') + '" data-field="valor" data-id="' + esc(l.id) + '" inputmode="decimal" placeholder="0,00" value="' + num(v) + '" aria-label="Valor gasto em ' + esc(l.nome || 'linha') + ', em reais" autocomplete="off"' + ro + '>') +
+        : '<input class="valor' + (v === 0 ? ' zero' : '') + '" data-field="valor" data-id="' + esc(l.id) + '" inputmode="decimal" placeholder="0,00" value="' + num(v) + '" aria-label="' + (ent ? 'Valor recebido de ' : 'Valor gasto em ') + esc(l.nome || 'linha') + ', em reais" autocomplete="off"' + ro + '>') +
       (state.canWrite ? '<button type="button" class="del' + (arm ? ' arm' : '') + '" data-action="del" data-id="' + esc(l.id) + '" aria-label="Excluir ' + esc(l.nome || 'linha') + '">' + (arm ? 'Excluir?' : '×') + '</button>' : '') +
       subHtml(l, itens) +
       '</li>';
@@ -892,6 +903,11 @@ body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(saf
   var TAGSVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.3" fill="currentColor"/></svg>';
   function subHtml(l, itens) {
     var fixo = l.grupo === 'fixo', fx = fixaEf(l), w = state.canWrite, chips = '';
+    if (l.grupo === 'entrada') {
+      chips = '<label class="pchip">Recebido em<input type="date" class="pdata" data-lf="p" data-id="' + esc(l.id) + '" value="' + esc(l.pagoEm || '') + '" aria-label="Data em que o dinheiro entrou"' + (w ? '' : ' disabled') + '></label>';
+      var ax = anexHtml(l);
+      return '<div class="sub"><div class="chips">' + chips + ax.pill + '</div>' + ax.panel + '</div>';
+    }
     chips += '<button type="button" class="tag' + (fx ? ' on' : '') + '" data-action="fixa" data-id="' + esc(l.id) + '" aria-pressed="' + fx + '" aria-label="' + (fx ? 'Valor fixo: repete todo mês com o mesmo valor. Toque para desmarcar.' : 'Marcar como valor fixo: repete todo mês com o mesmo valor.') + '"' + (w ? '' : ' disabled') + '>' + TAGSVG + (fx ? 'Valor fixo' : 'Fixar valor') + '</button>';
     if (l.pago) chips += '<label class="pchip">Pago<input type="date" class="pdata" data-lf="p" data-id="' + esc(l.id) + '" value="' + esc(l.pagoEm || '') + '" aria-label="Data em que foi pago"' + (w ? '' : ' disabled') + '></label>';
     var anx = anexHtml(l);
@@ -1059,15 +1075,20 @@ body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(saf
       guarda = { id: ativo.getAttribute('data-id'), campo: ativo.getAttribute('data-field'), valor: ativo.value, ini: ativo.selectionStart, fim: ativo.selectionEnd };
     }
     var reconstruiu = false;
-    ['fixo', 'variavel'].forEach(function (g) {
+    var rendaMes = state.renda + soma(doMes(state.mes, 'entrada')), rotRendaG = rendaMes > state.renda ? 'da renda' : 'do salário';
+    ['fixo', 'variavel', 'entrada'].forEach(function (g) {
       var cfg = GRUPOS[g], box = $(cfg.box), ok = state.status === 'ok';
-      var it = doMes(state.mes, g), tot = soma(it), k = g === 'fixo' ? 'f' : 'v';
+      var it = doMes(state.mes, g), tot = soma(it), k = g === 'fixo' ? 'f' : g === 'entrada' ? 'e' : 'v';
+      if (g === 'entrada') {   /* a seção só aparece no app próprio (que guarda os dados no servidor) */
+        box.hidden = !(S && S.anexar);
+        if (box.hidden) return;
+      }
       var aPagar = 0;
       it.forEach(function (l) { if (!l.pago) aPagar += l.valorCentavos || 0; });
       var chips = '';
       if (ok) {
-        if (state.renda > 0) chips += '<span class="chip">' + pct(tot, state.renda) + '% do salário</span>';
-        if (aPagar > 0) chips += '<span class="chip pend">A pagar ' + esc(brl(aPagar)) + '</span>';
+        if (g !== 'entrada' && rendaMes > 0) chips += '<span class="chip">' + pct(tot, rendaMes) + '% ' + rotRendaG + '</span>';
+        if (g !== 'entrada' && aPagar > 0) chips += '<span class="chip pend">A pagar ' + esc(brl(aPagar)) + '</span>';
         if (!chips) chips = esc(cfg.dica);
       } else chips = esc(cfg.dica);
       var cabecalho = '<div><h2 id="' + cfg.id + '"><i class="sw" style="background:' + cfg.cor + '"></i>' + cfg.titulo + '</h2><p class="gsub">' + chips + '</p></div>' +
@@ -1096,8 +1117,8 @@ body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(saf
       if (state.status === 'sem-db') corpo = '<p class="vazio">Entre na sua conta do Claude para ver e salvar os gastos desta página.</p>';
       else if (state.status === 'erro') corpo = '<p class="vazio">Não foi possível carregar agora. Recarregue em alguns instantes.</p>';
       else if (!ok) corpo = '<p class="vazio">Carregando…</p>';
-      else corpo = (it.length ? '<div class="cabeca ' + k + '" aria-hidden="true">' + '<span></span><span class="l">Conta</span><span class="r">Gasto (R$)</span><span></span></div><ul class="linhas">' + it.map(linhaHtml).join('') + '</ul>' : '<p class="vazio">' + cfg.vazio + '</p>') +
-        (state.canWrite ? '<button type="button" class="addl" data-action="add" data-grupo="' + g + '">+ Adicionar linha</button>' : '');
+      else corpo = (it.length ? '<div class="cabeca ' + k + '" aria-hidden="true">' + '<span></span><span class="l">' + (g === 'entrada' ? 'De quem / serviço' : 'Conta') + '</span><span class="r">' + (g === 'entrada' ? 'Entrada (R$)' : 'Gasto (R$)') + '</span><span></span></div><ul class="linhas">' + it.map(linhaHtml).join('') + '</ul>' : '<p class="vazio">' + cfg.vazio + '</p>') +
+        (state.canWrite ? '<button type="button" class="addl" data-action="add" data-grupo="' + g + '">' + (g === 'entrada' ? '+ Adicionar entrada' : '+ Adicionar linha') + '</button>' : '');
       box.innerHTML = '<header class="ghead">' + cabecalho + '</header>' + corpo;
       box.setAttribute('data-w', String(state.canWrite));
       var ul2 = box.querySelector('ul.linhas');
@@ -1426,7 +1447,8 @@ body{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(saf
     return { id: S.novoId(), doc: { nome: nome, grupo: grupo, mes: state.mes, valorCentavos: valor, pago: false, criado: Date.now() + (ordem || 0) } };
   }
   function adicionar(grupo) {
-    var n = novaLinha(grupo, 'Nova linha', 0, 0);
+    var n = novaLinha(grupo, grupo === 'entrada' ? 'Entrada extra' : 'Nova linha', 0, 0);
+    if (grupo === 'entrada') n.doc.pagoEm = (state.mes === hojeMes() ? hojeISO() : state.mes + '-01');   /* data em que o dinheiro entrou (dá para trocar) */
     state.focusId = n.id;
     enfileirar(function () { return S.set(n.id, n.doc); });
   }

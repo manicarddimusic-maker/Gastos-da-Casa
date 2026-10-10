@@ -70,14 +70,16 @@ function fimParcela(nome) {
 }
 
 function calcMes(estado, m) {
-  const linhas = Object.keys(estado.linhas).map((id) => Object.assign({ id }, estado.linhas[id]))
+  const todas = Object.keys(estado.linhas).map((id) => Object.assign({ id }, estado.linhas[id]))
     .filter((l) => l.mes === m).sort((a, b) => (a.criado || 0) - (b.criado || 0));
+  const linhas = todas.filter((l) => l.grupo !== 'entrada'), entradas = todas.filter((l) => l.grupo === 'entrada');
   const soma = (a) => a.reduce((t, l) => t + (l.valorCentavos || 0), 0);
   const fixos = linhas.filter((l) => l.grupo === 'fixo'), vars = linhas.filter((l) => l.grupo === 'variavel');
   const pagos = (a) => soma(a.filter((l) => l.pago));
-  const prev = soma(linhas), pago = pagos(linhas), renda = estado.renda || 0;
+  const salario = estado.renda || 0, entTot = soma(entradas), renda = salario + entTot;   // renda do mês = salário + entradas extras
+  const prev = soma(linhas), pago = pagos(linhas);
   return {
-    m, linhas, fixos, vars, tem: linhas.length > 0, renda,
+    m, linhas, entradas, entTot, salario, fixos, vars, tem: todas.length > 0, renda,
     fixosTot: soma(fixos), varsTot: soma(vars), fixosPago: pagos(fixos), varsPago: pagos(vars),
     prev, pago, aPagar: prev - pago, disponivel: renda - pago
   };
@@ -220,12 +222,13 @@ async function gerarRelatorio(op, saida) {
 
   /* ---- bloco: resumo do mês ---- */
   function resumoMes(dm) {
+    const renda = dm.renda, ent = dm.entTot > 0, rot = ent ? 'da renda' : 'do salário';
     const gap = 10, w4 = (CW - 3 * gap) / 4;
     garantir(80);
-    cartao(ML, y, w4, 66, 'Salário', renda > 0 ? brl(renda) : '—', 'recebimento mensal');
+    cartao(ML, y, w4, 66, 'Salário', dm.salario > 0 ? brl(dm.salario) : '—', ent ? '+ ' + brl(dm.entTot) + ' de entradas' : 'recebimento mensal');
     cartao(ML + (w4 + gap), y, w4, 66, 'Lançado no mês', brl(dm.prev), dm.linhas.length + (dm.linhas.length === 1 ? ' linha' : ' linhas'));
-    cartao(ML + 2 * (w4 + gap), y, w4, 66, 'Pago (ticado)', brl(dm.pago), renda > 0 ? pct(dm.pago, renda) + '% do salário' : '');
-    cartao(ML + 3 * (w4 + gap), y, w4, 66, 'Disponível no mês', renda > 0 ? brl(dm.disponivel) : '—', 'salário − pago', 'lime');
+    cartao(ML + 2 * (w4 + gap), y, w4, 66, 'Pago (ticado)', brl(dm.pago), renda > 0 ? pct(dm.pago, renda) + '% ' + rot : '');
+    cartao(ML + 3 * (w4 + gap), y, w4, 66, 'Disponível no mês', renda > 0 ? brl(dm.disponivel) : '—', ent ? 'salário + entradas − pago' : 'salário − pago', 'lime');
     y += 66 + gap;
     const w3 = (CW - 2 * gap) / 3;
     cartao(ML, y, w3, 58, 'Ainda a pagar', brl(dm.aPagar), 'lançado e não ticado');
@@ -235,7 +238,7 @@ async function gerarRelatorio(op, saida) {
 
     if (renda > 0) {
       garantir(54);
-      doc.font('M7').fontSize(7.5).fillColor(C.muted).text('COMPROMETIMENTO DO SALÁRIO', ML, y, { characterSpacing: 0.9, lineBreak: false });
+      doc.font('M7').fontSize(7.5).fillColor(C.muted).text((ent ? 'COMPROMETIMENTO DA RENDA' : 'COMPROMETIMENTO DO SALÁRIO'), ML, y, { characterSpacing: 0.9, lineBreak: false });
       y += 14;
       const bw = CW, bh = 12;
       doc.save(); doc.roundedRect(ML, y, bw, bh, 6).clip();
@@ -252,7 +255,7 @@ async function gerarRelatorio(op, saida) {
         doc.font('M6').fontSize(8).fillColor(C.ink).text(p[1], lx + 12, y + 1, { lineBreak: false });
         lx += 12 + doc.widthOfString(p[1]) + 18;
       });
-      if (dm.prev > renda) doc.font('M7').fontSize(8).fillColor(C.coral).text('Lançamentos acima do salário em ' + brl(dm.prev - renda), ML, y + 1, { width: CW, align: 'right', lineBreak: false });
+      if (dm.prev > renda) doc.font('M7').fontSize(8).fillColor(C.coral).text('Lançamentos acima ' + (ent ? 'da renda' : 'do salário') + ' em ' + brl(dm.prev - renda), ML, y + 1, { width: CW, align: 'right', lineBreak: false });
       y += 22;
     }
 
@@ -374,7 +377,7 @@ async function gerarRelatorio(op, saida) {
   /* ---- anexos e comprovantes ---- */
   function anexosBloco(dm) {
     const pares = [];
-    dm.linhas.forEach((l) => (l.anexos || []).forEach((a) => pares.push({ l, a })));
+    dm.linhas.concat(dm.entradas).forEach((l) => (l.anexos || []).forEach((a) => pares.push({ l, a })));
     if (!pares.length) return;
     titulo('Anexos e comprovantes', pares.length + (pares.length === 1 ? ' arquivo' : ' arquivos'), '#8A978E');
     garantir(40);
@@ -426,6 +429,40 @@ async function gerarRelatorio(op, saida) {
     }
   }
 
+  /* ---- entradas extras do mês ---- */
+  function entradasBloco(dm) {
+    if (!dm.entradas.length) return;
+    garantir(26 + 20 + 60);
+    titulo('Entradas extras', 'Total ' + brl(dm.entTot), '#1BA9C4');
+    garantir(20 + 34);
+    doc.rect(ML, y, CW, 20).fill('#E9EFEA');
+    doc.font('M7').fontSize(6.8).fillColor(C.muted);
+    doc.text('DE QUEM / SERVIÇO', XN, y + 7, { characterSpacing: 0.9, lineBreak: false });
+    doc.text('VALOR', XV, y + 7, { width: WV - 8, align: 'right', characterSpacing: 0.9, lineBreak: false });
+    doc.text('RECEBIDO EM', XP - 6, y + 7, { width: WP + 12, align: 'center', characterSpacing: 0.9, lineBreak: false });
+    doc.text('ANEXOS', XA - 4, y + 7, { width: WA, align: 'center', characterSpacing: 0.9, lineBreak: false });
+    y += 20;
+    dm.entradas.forEach((l, i) => {
+      const nomeH = doc.font('M7').fontSize(9.5).heightOfString(l.nome || '', { width: WN });
+      const h = Math.max(26, 9 + nomeH + 8);
+      garantir(h + 4);
+      if (i % 2 === 1) doc.rect(ML, y, CW, h).fill('#FAFBFA');
+      doc.circle(XI + 13, y + 14, 5.2).fill('#1BA9C4');
+      doc.moveTo(XI + 10.6, y + 14).lineTo(XI + 15.4, y + 14).moveTo(XI + 13, y + 11.6).lineTo(XI + 13, y + 16.4).lineWidth(1.3).lineCap('round').stroke(C.white);
+      doc.font('M7').fontSize(9.5).fillColor(C.ink).text(l.nome || '', XN, y + 8, { width: WN });
+      doc.font('M8').fontSize(9.5).fillColor(C.ink).text(brl(l.valorCentavos || 0), XV, y + 8, { width: WV - 8, align: 'right', lineBreak: false });
+      doc.font('M6').fontSize(8.5).fillColor(C.green).text(dataBR(l.pagoEm) || '—', XP, y + 9, { width: WP, align: 'center', lineBreak: false });
+      const na = (l.anexos || []).length;
+      if (na) { iconeClipe(XA + 6, y + 13); doc.font('M7').fontSize(8.5).fillColor(C.muted).text(String(na), XA + 12, y + 9, { lineBreak: false }); }
+      y += h;
+      doc.moveTo(ML, y).lineTo(ML + CW, y).lineWidth(0.5).stroke(C.line);
+    });
+    doc.rect(ML, y, CW, 24).fill('#DDF5FA');
+    doc.font('M7').fontSize(8.5).fillColor(C.ink).text('Total · entradas extras', XN, y + 8, { lineBreak: false });
+    doc.font('M8').fontSize(10).fillColor(C.ink).text(brl(dm.entTot), XV, y + 7, { width: WV - 8, align: 'right', lineBreak: false });
+    y += 24 + 20;
+  }
+
   /* ---- seção completa de um mês ---- */
   function secaoMes(dm, comCapa) {
     if (!comCapa) {
@@ -441,6 +478,7 @@ async function gerarRelatorio(op, saida) {
     }
     resumoMes(dm);
     parcelasBloco(dm);
+    entradasBloco(dm);
     tabelaLinhas(dm, 'fixo', dm.fixos, 'Custos fixos', C.limeDk);
     tabelaLinhas(dm, 'variavel', dm.vars, 'Custos variáveis', C.pink);
     maioresGastos(dm);
@@ -476,23 +514,23 @@ async function gerarRelatorio(op, saida) {
   }
   function tabelaMeses() {
     titulo('Resumo por mês', ativosOuTodos.length + ' meses', C.limeDk);
-    const cols = [['MÊS', ML + 8, 100, 'left'], ['FIXOS', ML + 100, 70, 'right'], ['VARIÁVEIS', ML + 172, 76, 'right'], ['LANÇADO', ML + 250, 78, 'right'], ['PAGO', ML + 330, 78, 'right'], ['DISPONÍVEL', ML + 410, 105, 'right']];
+    const cols = [['MÊS', ML + 8, 92, 'left'], ['FIXOS', ML + 98, 68, 'right'], ['VARIÁVEIS', ML + 164, 74, 'right'], ['LANÇADO', ML + 236, 72, 'right'], ['PAGO', ML + 306, 70, 'right'], ['ENTRADAS', ML + 374, 70, 'right'], ['DISPONÍVEL', ML + 442, 73, 'right']];
     const cab = () => { doc.rect(ML, y, CW, 20).fill('#E9EFEA'); doc.font('M7').fontSize(6.8).fillColor(C.muted); cols.forEach((c) => doc.text(c[0], c[1], y + 7, { width: c[2] - 8, align: c[3], characterSpacing: 0.8, lineBreak: false })); y += 20; };
     garantir(60); cab();
-    let tF = 0, tV = 0, tP = 0, tG = 0, tD = 0, k = 0;
+    let tF = 0, tV = 0, tP = 0, tG = 0, tD = 0, tE = 0, k = 0;
     ativosOuTodos.forEach((m, i) => {
       const d = dados[m];
       if (garantir(22)) cab();
       if (i % 2 === 1) doc.rect(ML, y, CW, 22).fill('#FAFBFA');
-      const vals = [mesNome(m), brl(d.fixosTot), brl(d.varsTot), brl(d.prev), brl(d.pago), renda > 0 ? brl(d.disponivel) : '—'];
-      cols.forEach((c, j) => doc.font(j === 0 ? 'M7' : 'M6').fontSize(8.6).fillColor(j === 5 && renda > 0 && d.disponivel < 0 ? C.coral : C.ink).text(vals[j], c[1], y + 7, { width: c[2] - 8, align: c[3], lineBreak: false }));
+      const vals = [mesNome(m), brl(d.fixosTot), brl(d.varsTot), brl(d.prev), brl(d.pago), d.entTot > 0 ? brl(d.entTot) : '—', d.renda > 0 ? brl(d.disponivel) : '—'];
+      cols.forEach((c, j) => doc.font(j === 0 ? 'M7' : 'M6').fontSize(8.6).fillColor(j === 6 && d.renda > 0 && d.disponivel < 0 ? C.coral : C.ink).text(vals[j], c[1], y + 7, { width: c[2] - 8, align: c[3], lineBreak: false }));
       y += 22; doc.moveTo(ML, y).lineTo(ML + CW, y).lineWidth(0.5).stroke(C.line);
-      tF += d.fixosTot; tV += d.varsTot; tP += d.prev; tG += d.pago; tD += d.disponivel; k++;
+      tF += d.fixosTot; tV += d.varsTot; tP += d.prev; tG += d.pago; tD += d.disponivel; tE += d.entTot; k++;
     });
     garantir(28);
     doc.rect(ML, y, CW, 26).fill(C.limeSoft);
-    const tv = ['TOTAL DO PERÍODO', brl(tF), brl(tV), brl(tP), brl(tG), renda > 0 ? brl(tD) : '—'];
-    cols.forEach((c, j) => doc.font('M8').fontSize(j === 0 ? 7.6 : 8.6).fillColor(C.ink).text(tv[j], c[1], y + 9, { width: c[2] - 8 + (j === 0 ? 30 : 0), align: c[3], lineBreak: false }));
+    const tv = ['TOTAL DO PERÍODO', brl(tF), brl(tV), brl(tP), brl(tG), tE > 0 ? brl(tE) : '—', (renda > 0 || tE > 0) ? brl(tD) : '—'];
+    cols.forEach((c, j) => doc.font('M8').fontSize(j === 0 ? 7.6 : 8.6).fillColor(C.ink).text(tv[j], c[1], y + 9, { width: c[2] - 8 + (j === 0 ? 4 : 0), align: c[3], lineBreak: false }));
     y += 26 + 20;
   }
   function ondeMaisGastou() {
@@ -524,9 +562,10 @@ async function gerarRelatorio(op, saida) {
     const gap = 10, w4 = (CW - 3 * gap) / 4;
     garantir(80);
     cartao(ML, y, w4, 66, 'Total lançado', brl(lanc), ativosOuTodos.length + ' meses');
-    cartao(ML + (w4 + gap), y, w4, 66, 'Total pago', brl(pago), renda > 0 ? pct(pago, renda * ativosOuTodos.length) + '% do salário no período' : '');
+    const rendaP = ativosOuTodos.reduce((t, m) => t + dados[m].renda, 0), entP = ativosOuTodos.reduce((t, m) => t + dados[m].entTot, 0);
+    cartao(ML + (w4 + gap), y, w4, 66, 'Total pago', brl(pago), rendaP > 0 ? pct(pago, rendaP) + '% ' + (entP > 0 ? 'da renda' : 'do salário') + ' no período' : '');
     cartao(ML + 2 * (w4 + gap), y, w4, 66, 'Média mensal', brl(Math.round(lanc / comDados)), 'lançado por mês');
-    cartao(ML + 3 * (w4 + gap), y, w4, 66, 'Disponível no período', renda > 0 ? brl(renda * ativosOuTodos.length - pago) : '—', 'salário − pago', 'lime');
+    cartao(ML + 3 * (w4 + gap), y, w4, 66, 'Disponível no período', rendaP > 0 ? brl(rendaP - pago) : '—', entP > 0 ? 'salário + entradas − pago' : 'salário − pago', 'lime');
     y += 66 + 22;
   }
 

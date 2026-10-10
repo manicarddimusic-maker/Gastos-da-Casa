@@ -82,7 +82,7 @@ function falhou(ip) {
 }
 
 /* ---------- validação ---------- */
-const GRUPOS = ['fixo', 'variavel'];
+const GRUPOS = ['fixo', 'variavel', 'entrada'];   // entrada = dinheiro extra que entrou além do salário
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const MES_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 const MAX_LINHAS = 20000;
